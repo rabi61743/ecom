@@ -63,7 +63,8 @@ export default function AuthModal() {
       signupData.email, 
       signupData.password, 
       signupData.firstName, 
-      signupData.lastName
+      signupData.lastName,
+      signupData.phone
     );
     setLoading(false);
     

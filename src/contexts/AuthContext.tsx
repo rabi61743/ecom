@@ -7,10 +7,12 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, firstName: string, lastName: string, phone?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
+  updateProfile: (data: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string }) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
+  const signUp = async (email: string, password: string, firstName: string, lastName: string, phone?: string) => {
     try {
       const redirectUrl = `${window.location.origin}/`;
       
@@ -53,9 +55,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           data: {
             first_name: firstName,
             last_name: lastName,
+            phone: phone || '',
           },
         },
       });
+
+      if (error) throw error;
 
       toast({ title: 'Account created', description: 'Please check your email to verify your account' });
       return { error: null };
@@ -108,6 +113,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updatePassword = async (newPassword: string) => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) throw error;
+      
+      toast({ title: 'Password updated', description: 'Your password has been changed successfully' });
+      return { error: null };
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Password update failed', description: err.message });
+      return { error: err };
+    }
+  };
+
+  const updateProfile = async (data: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string }) => {
+    try {
+      const { error } = await supabase.rpc('update_user_profile', {
+        p_first_name: data.firstName,
+        p_last_name: data.lastName,
+        p_phone: data.phone,
+        p_avatar_url: data.avatarUrl,
+      });
+
+      if (error) throw error;
+      
+      toast({ title: 'Profile updated', description: 'Your profile has been updated successfully' });
+      return { error: null };
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Profile update failed', description: err.message });
+      return { error: err };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -118,6 +158,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn,
         signOut,
         resetPassword,
+        updatePassword,
+        updateProfile,
       }}
     >
       {children}
